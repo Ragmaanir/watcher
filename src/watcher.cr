@@ -1,67 +1,69 @@
 require "./watcher/*"
 
 module Watcher
-  # Class to save file changes
-  private class WatchEvent
-    property changed = false, files = {} of String => Tuple(Bool, String)
-    getter interval
+  enum Status
+    CREATED
+    MODIFIED
+    DELETED
+  end
 
-    def initialize(@interval : Int32 | Float64)
+  class State
+    getter timestamps : Hash(String, Time)
+    getter changes : Hash(String, Status)
+    getter interval : Int32 | Float64
+
+    def initialize(@interval, @timestamps, @changes)
     end
 
-    # Allow to yield a block when a file changes
-    def on_change
-      yield files if changed
+    def changed?
+      !changes.empty?
     end
   end
 
   # Get file timestamp using File.stat
-  def self.timestamp_for(file : String)
-    File.info(file).modification_time.to_s("%Y%m%d%H%M%S.%L")
+  def self.timestamp_for(file : String) : Time
+    File.info(file).modification_time
   end
 
-  private def self.scanner(files, event)
-    event.changed = false
-    Dir.glob(files) do |file|
-      timestamp = timestamp_for(file)
-      if (event.files[file]? && event.files[file].last != timestamp)
-        event.files[file] = {false, timestamp}
-        event.changed = true
-      elsif event.files[file]?.nil?
-        event.files[file] = {true, timestamp}
-        event.changed = true
-      end
+  private def self.scan(pattern, state : State)
+    changes = {} of String => Status
+    prev_ts = state.timestamps
+    now_ts = Dir.glob(pattern).map { |f| {f, timestamp_for(f)} }.to_h
+
+    all_files = (prev_ts.keys + now_ts.keys).uniq
+
+    all_files.each do |f|
+      prev = prev_ts[f]?
+      now = now_ts[f]?
+
+      status = case {prev, now}
+               when {nil, nil}   then nil
+               when {nil, _}     then Status::CREATED
+               when {_, nil}     then Status::DELETED
+               when {prev, prev} then nil
+               else                   Status::MODIFIED
+               end
+
+      changes[f] = status if status
     end
-    event
+
+    State.new(state.interval, now_ts, changes)
   end
 
   # Allow to watch file changes using Watcher.watch
-  def self.watch(files, interval : Int32 | Float64)
-    event = WatchEvent.new(interval)
+  def self.watch(pattern, interval : Int32 | Float64)
+    state = State.new(interval, {} of String => Time, {} of String => Status)
+
     loop do
-      event = scanner(files, event)
-      yield event
-      sleep event.interval
+      state = scan(pattern, state)
+      yield(state.changes, state) if state.changed?
+      sleep state.interval
     end
   end
 
-  def self.watch(files)
-    self.watch(files, 1) do |event|
-      yield event
+  def self.watch(pattern)
+    self.watch(pattern, 1) do |*args|
+      yield(*args)
     end
-  end
-end
-
-# Allow to watch file changes
-def watch(files, interval)
-  Watcher.watch(files, interval) do |event|
-    yield event
-  end
-end
-
-# :ditto:
-def watch(files)
-  watch(files, 1) do |event|
-    yield event
   end
 end
