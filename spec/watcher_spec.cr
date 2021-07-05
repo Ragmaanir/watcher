@@ -4,10 +4,10 @@ TEST_FILE = "src/watcher.cr"
 TIMESTAMP = Watcher.timestamp_for(TEST_FILE)
 
 describe Watcher do
-  it "verify Watcher::WatchEvent.event.files" do
+  it "verify block arguments" do
     Watcher.watch(TEST_FILE) do |changes, state|
       state.timestamps.should eq({TEST_FILE => TIMESTAMP})
-      changes.should eq({TEST_FILE => Watcher::Status::CREATED})
+      changes.should eq({TEST_FILE => Watcher::Status::Created})
       break
     end
   end

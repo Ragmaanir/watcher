@@ -2,9 +2,9 @@ require "./watcher/*"
 
 module Watcher
   enum Status
-    CREATED
-    MODIFIED
-    DELETED
+    Created
+    Modified
+    Deleted
   end
 
   class State
@@ -38,10 +38,10 @@ module Watcher
 
       status = case {prev, now}
                when {nil, nil}   then nil
-               when {nil, _}     then Status::CREATED
-               when {_, nil}     then Status::DELETED
+               when {nil, _}     then Status::Created
+               when {_, nil}     then Status::Deleted
                when {prev, prev} then nil
-               else                   Status::MODIFIED
+               else                   Status::Modified
                end
 
       changes[f] = status if status

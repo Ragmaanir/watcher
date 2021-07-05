@@ -22,8 +22,8 @@ Use the `Watcher.watch` to watch files or file groups, for example:
 require "watcher"
 
 Watcher.watch("src/assets/js/*.js") do |changes, state|
-  # changes is a Hash(String, Watcher::Status)
-  # status is CREATED | MODIFIED | DELETED
+  # changes is a Hash(String, Watcher::Status) mapping a filename to its change-status
+  # change-status is Created | Modified | Deleted
   changes.each do |name, status|
     puts "{status}: #{name}"
   end
