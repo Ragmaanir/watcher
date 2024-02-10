@@ -51,12 +51,16 @@ module Watcher
   end
 
   # Allow to watch file changes using Watcher.watch
-  def self.watch(pattern, interval : Int32 | Float64 = 1)
+  def self.watch(pattern, interval : Int32 | Float64 = 1, skip_initial = true)
     state = State.new(interval, {} of String => Time, {} of String => Status)
+    initial = true
 
     loop do
       state = scan(pattern, state)
-      yield(state.changes, state) if state.changed?
+      if state.changed? && !(initial && skip_initial)
+        yield(state.changes, state)
+      end
+      initial = false
       sleep state.interval
     end
   end
