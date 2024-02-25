@@ -1,6 +1,8 @@
-require "./watcher/*"
+require "colorize"
 
 module Watcher
+  VERSION = {{ `shards version #{__DIR__}`.strip.stringify }}
+
   enum Status
     Created
     Modified
@@ -63,5 +65,18 @@ module Watcher
       initial = false
       sleep state.interval
     end
+  end
+
+  def self.print_changes(mod : String, base_path : String | Path, changes : Hash(String, Watcher::Status))
+    print "#{mod}: "
+    puts changes.join(", ") { |f, status|
+      color = case status
+              in .created?  then :green
+              in .deleted?  then :red
+              in .modified? then :yellow
+              end
+
+      f.gsub(base_path.to_s, "").colorize.fore(color)
+    }
   end
 end
